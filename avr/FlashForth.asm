@@ -162,7 +162,6 @@
   .dw ((@0<<1)+PFLASH)
 .endmacro
 
-
 ; Symbol naming compatilibity
 
 .ifndef SPMEN
@@ -177,24 +176,24 @@
 .equ EEMWE=EEMPE
 .endif
 
-.if OPERATOR_UART == 1
-.equ OP_TX_=TX1_
-.equ OP_RX_=RX1_
-.equ OP_RXQ=RX1Q
-.else
-.if OPERATOR_UART == 0
-.equ OP_TX_=TX0_
-.equ OP_RX_=RX0_
-.equ OP_RXQ=RX0Q
-.endif
-.endif
+;.if OPERATOR_UART == 1
+;.equ OP_TX_=TX1_
+;.equ OP_RX_=RX1_
+;.equ OP_RXQ=RX1Q
+;.else
+;.if OPERATOR_UART == 0
+;.equ OP_TX_=TX0_
+;.equ OP_RX_=RX0_
+;.equ OP_RXQ=RX0Q
+;.endif
+;.endif
 
-#define ubrr0val (FREQ_OSC/16/BAUDRATE0) - 1
-#define ubrr1val (FREQ_OSC/16/BAUDRATE1) - 1
-#define ms_value -(FREQ_OSC/1000)
-#define BOOT_SIZE 0x400
-#define BOOT_START FLASHEND - BOOT_SIZE + 1  ; atm128: 0xfc00, atm328: 0x3c00 
-#define KERNEL_START BOOT_START - 0x0c00
+.define ubrr0val (FREQ_OSC/16/BAUDRATE0) - 1
+.define ubrr1val (FREQ_OSC/16/BAUDRATE1) - 1
+.define ms_value -(FREQ_OSC/1000)
+.define BOOT_SIZE 0x400
+.define BOOT_START FLASHEND - BOOT_SIZE + 1  ; atm128: 0xfc00, atm328: 0x3c00 
+.define KERNEL_START BOOT_START - 0x0c00
 
 ;..............................................................................
 ;Program Specific Constants (literals used in code)
@@ -429,7 +428,7 @@ EXIT:
         ret
 
 ; idle
-        fdw(EXIT_L)
+        fdw EXIT_L 
 IDLE_L:
         .db     NFA|4,"idle",0
 IDLE:
@@ -445,7 +444,7 @@ IDLE1:
         ret
         
 ; busy
-        fdw(IDLE_L)
+        fdw IDLE_L 
 BUSY_L:
         .db     NFA|4,"busy",0
 BUSY:
@@ -471,7 +470,7 @@ IDLE_HELP:
 .endif
         
 ; busy
-        fdw(BUSY_L)
+        fdw BUSY_L 
 LOAD_L:
         .db     NFA|4,"load",0
 LOAD:
@@ -775,7 +774,7 @@ DODOES:
         pushtos
         lpm_    tosl, z+
         lpm_    tosh, z+
-        movw    z, x
+        movw    r31:r30, r27:r26
         ijmp    ; (z)
 
 ;   SP@     -- addr         get parameter stack pointer
@@ -783,15 +782,15 @@ DODOES:
 SPFETCH_L:
         .db     NFA|3,"sp@"
 SPFETCH:
-        movw    z, y
+        movw    r31:r30, r29:r28 ;z,y
         pushtos
-        movw    tosl, z
+        movw    tosl, r31:r30 ;z
         ret
 
 ;   SP!     addr --         store stack pointer
         .db     NFA|3,"sp!"
 SPSTORE:
-        movw    y, tosl
+        movw    r29:r28, tosl ; y
         ret
 
 ;   RPEMPTY     -- EMPTY THE RETURN STACK       
@@ -1923,7 +1922,7 @@ BIN:    rcall   CELL
         rcall   BASE
         jmp     STORE
 
-#ifndef SKIP_MULTITASKING
+.ifndef SKIP_MULTITASKING
 ; RSAVE   -- a-addr     Saved return stack pointer
         fdw     BIN_L
 RSAVE_L:
@@ -1950,9 +1949,9 @@ ULINK_: rcall   DOUSER
 
 ; TASK       -- a-addr              TASK pointer
         fdw     ULINK_L
-#else
+.else
         fdw     BIN_L
-#endif
+.endif
 TASK_L:
         .db     NFA|4,"task",0
 TASK:   rcall   DOUSER
@@ -2819,7 +2818,7 @@ QABO1:  jmp     TWODROP
 ;         i*x x1 --       R: j*x --      x1<>0
         fdw     QABORT_L
 ABORTQUOTE_L:
-        .db     NFA|IMMED|COMPILE|6,"abort",'"',0
+        .db     NFA|IMMED|COMPILE|6,"abort\"",0
 ABORTQUOTE:
         rcall   SQUOTE
         rcall   DOLIT
@@ -4283,9 +4282,13 @@ WARMLIT:
         .dw      0x0200                ; cse, state
         .dw      usbuf+ussize-4        ; S0
         .dw      urbuf+ursize-2        ; R0
-        fdw      OP_TX_
-        fdw      OP_RX_
-        fdw      OP_RXQ
+;        fdw      OP_TX_
+;        fdw      OP_RX_
+;        fdw      OP_RXQ
+; wired this in because didn't work with avra 
+        .dw      TX0_
+        .dw      RX0_
+        .dw      RX0Q
         .dw      up0                   ; Task link
         .dw      BASE_DEFAULT          ; BASE
         .dw      utibbuf               ; TIB
@@ -4306,7 +4309,7 @@ STAT:   fdw      DOTSTATUS
 
 ;***************************************************
 ; TX0   c --    output character to UART 0
-        fdw(LOAD_L)
+        fdw LOAD_L 
 TX0_L:
         .db     NFA|3,"tx0"
 TX0_:
@@ -4355,7 +4358,7 @@ TX0_SEND:
         ret
 ;***************************************************
 ; RX0    -- c    get character from the UART 0 buffer
-        fdw(TX0_L)
+        fdw TX0_L 
 RX0_L:
         .db     NFA|3,"rx0"
 RX0_:
@@ -4402,7 +4405,7 @@ RX0Q:
 ;***************************************************
 ; TX1   c --    output character to UART 1
 .ifdef UDR1
-        fdw(RX0Q_L)
+        fdw RX0Q_L 
 TX1_L:
         .db     NFA|3,"tx1"
 TX1_:
@@ -4447,7 +4450,7 @@ TX1_SEND:
         ret
 ;***************************************************
 ; RX1    -- c    get character from the serial line
-        fdw(TX1_L)
+        fdw TX1_L 
 RX1_L:
         .db     NFA|3,"rx1"
 RX1_:
@@ -4581,7 +4584,7 @@ IWRITE_BUFFER1:
         rcall   DO_SPM
         ; re-enable the RWW section
         rcall   IWRITE_BUFFER3
-#if 1
+.if 1
         ; read back and check, optional
         ldi     t0, low(PAGESIZEB);init loop variable
         subi    xl, low(PAGESIZEB) ;restore pointer
@@ -4593,10 +4596,10 @@ IWRITE_BUFFER2:
         rjmp    VERIFY_ERROR     ; emit ^ and reset.
         subi    t0, 1
         brne    IWRITE_BUFFER2
-#endif
+.endif
         clr     ibaseh
         cbr     FLAGS1, (1<<idirty)
-        // reenable interrupts
+        ; reenable interrupts
 .if OPERATOR_UART == 0
 .if U0FC_TYPE == 1
         rcall   DOLIT
@@ -4868,13 +4871,13 @@ LITERAL:
         ori     tosl, 0x90
         jmp     ICOMMA
 
-#if 0
+.if 0
 LITERALruntime:
         st      -Y, tosh    ; 0x939a
         st      -Y, tosl    ; 0x938a
         ldi     tosl, 0x12  ; 0xe1r2 r=8 (r24)
         ldi     tosh, 0x34  ; 0xe3r4 r=9 (r25)
-#endif
+.endif
 
 ;*****************************************************************
 ISTORE:
@@ -4946,7 +4949,7 @@ LOCKEDQ:
         
 ;***********************************************************
 IFETCH:
-        movw    z, tosl
+        movw    r31:r30, tosl ; z
         cpse    zh, ibaseh
         rjmp    IIFETCH
         mov     t0, zl
@@ -5000,7 +5003,7 @@ EFETCH:
         ret
 
 ICFETCH:
-        movw    z, tosl
+        movw    r31:r30, tosl ; z
         cpse    zh, ibaseh
         rjmp    IICFETCH
         mov     t0, zl
