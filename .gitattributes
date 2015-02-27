@@ -1,0 +1,6 @@
+*.txt linguist-language=Forth
+license.txt linguist-language=Text
+install.txt linguist-language=Text
+readme.txt linguist-language=Text
+ug.txt linguist-language=Text
+words.txt linguist-language=Text
